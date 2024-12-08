@@ -1,20 +1,92 @@
 import csv
 import random
-from tkinter import Tk, Canvas, Entry
+from tkinter import Tk, Canvas, Entry, Button
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
 from time import sleep
 
-dict_file = "test_dict.csv"
-eval_file = "eval.csv"
-
-
 class GrammarTrainerApp:
     def __init__(self, root):
         self.root = root
-        self.data = self.read_csv(dict_file)
-        self.learned = self.read_csv(eval_file)
-        self.pronouns = self.get_pronouns()
+        self.root.configure(background="white")
+        self.root.minsize(600, 400)
+        
+        self.font_path_large = "DejaVuSans-Bold.ttf"
+        self.font_path_small = "DejaVuSans.ttf"
+        self.font_large = ImageFont.truetype(self.font_path_large, 40)
+        self.font_small = ImageFont.truetype(self.font_path_small, 32)
+        self.font_score = ImageFont.truetype(self.font_path_small, 24)
+        
+        self.canvas_width = 600
+        self.canvas_height = 300
+        
+        self.show_start_screen()
+
+    def show_start_screen(self):
+        # Clear any existing widgets
+        for widget in self.root.winfo_children():
+            widget.destroy()
+
+        # Create and configure canvas for start screen
+        self.image = Image.new("RGBA", (self.canvas_width, self.canvas_height), "white")
+        self.draw = ImageDraw.Draw(self.image)
+        self.photo = ImageTk.PhotoImage(self.image)
+        
+        self.canvas = Canvas(self.root, width=self.canvas_width, height=self.canvas_height, 
+                           bg="white", highlightthickness=0)
+        self.canvas_image = self.canvas.create_image(0, 0, anchor="nw", image=self.photo)
+        self.canvas.pack(pady=20)
+
+        # Draw title
+        text = "Choose Training Mode"
+        text_bbox = self.draw.textbbox((0, 0), text, font=self.font_large)
+        text_width = text_bbox[2] - text_bbox[0]
+        x_position = (self.canvas_width - text_width) // 2
+        self.draw.text((x_position, 50), text, font=self.font_large, fill="black")
+
+        # Update canvas
+        updated_image = ImageTk.PhotoImage(self.image)
+        self.canvas.itemconfig(self.canvas_image, image=updated_image)
+        self.canvas.image = updated_image
+
+        # Create mode selection buttons
+        conjugation_btn = Button(
+            self.root,
+            text="Conjugation Practice",
+            font=("DejaVu Sans", 16),
+            command=lambda: self.start_training("conjugation")
+        )
+        conjugation_btn.pack(pady=10)
+
+        declension_btn = Button(
+            self.root,
+            text="Declension Practice",
+            font=("DejaVu Sans", 16),
+            command=lambda: self.start_training("declension")
+        )
+        declension_btn.pack(pady=10)
+
+    def start_training(self, mode):
+        # Set the appropriate files based on mode
+        if mode == "conjugation":
+            self.dict_file = "test_dict.csv"
+            self.eval_file = "eval.csv"
+            self.pronouns = self.get_pronouns()
+        else:  # declension
+            self.dict_file = "decl_dict.csv"
+            self.eval_file = "decl_eval.csv"
+            self.pronouns = self.get_case_words()
+        
+        self.setup_new_session()
+
+    def setup_new_session(self):
+        # Clear any existing widgets
+        for widget in self.root.winfo_children():
+            widget.destroy()
+
+        self.data = self.read_csv(self.dict_file)
+        self.learned = self.read_csv(self.eval_file)
+        
         self.current_word = None
         self.current_form = None
         self.current_word_idx = None
@@ -23,21 +95,9 @@ class GrammarTrainerApp:
         self.score = 0
         self.feedback_message_text = ""
         
-        self.canvas_width = 600
-        self.canvas_height = 300
-        
-        self.font_path_large = "DejaVuSans-Bold.ttf"
-        self.font_path_small = "DejaVuSans.ttf"
-        self.font_large = ImageFont.truetype(self.font_path_large, 40)
-        self.font_small = ImageFont.truetype(self.font_path_small, 32)
-        self.font_score = ImageFont.truetype(self.font_path_small, 24)
-
         self.initialize_gui()
 
     def initialize_gui(self):
-        self.root.configure(background="white")
-        self.root.minsize(600, 400)
-
         self.image, self.draw = self.create_pillow_image()
         self.photo = ImageTk.PhotoImage(self.image)
         self.canvas, self.canvas_image = self.create_canvas()
@@ -45,23 +105,6 @@ class GrammarTrainerApp:
         self.input_field = self.create_input_field()
 
         self.next_round()
-
-    def next_round(self):
-        if self.rounds >= self.max_rounds:
-            self.end_training()
-            return
-
-        self.rounds += 1
-        while True:
-            self.current_word_idx = random.randint(0, len(self.data) - 1)
-            self.current_word = self.data[self.current_word_idx]
-            self.current_form = random.randint(1, 6)
-
-            if self.learned[self.current_word_idx][self.current_form] != "1":
-                break
-
-        # Update canvas with the new round information
-        self.update_canvas_prompt()
 
     def create_pillow_image(self):
         image = Image.new("RGBA", (self.canvas_width, self.canvas_height), "white")
@@ -83,9 +126,7 @@ class GrammarTrainerApp:
         return entry
 
     def draw_score(self):
-        # Draw score in top right corner
-        score_text = f"{self.score}"#/{self.rounds}"
-        # Create a white rectangle to clear the previous score
+        score_text = f"{self.score}"
         self.draw.rectangle((self.canvas_width - 150, 10, self.canvas_width - 10, 40), fill="white")
         self.draw.text((self.canvas_width - 30, 10), score_text, font=self.font_score, fill="black")
 
@@ -94,23 +135,20 @@ class GrammarTrainerApp:
         pronoun = self.pronouns[self.current_form - 1]
         self.draw.rectangle((0, 0, self.canvas_width, self.canvas_height), fill="white")
         self.draw.text((100, 100), f"{pronoun}", font=self.font_large, fill="black")
-        self.draw.text((200, 100), input_text, font=self.font_large, fill="black")
+        self.draw.text((225, 100), input_text, font=self.font_large, fill="black")
         if self.current_word:
             base_form = self.current_word[0]
             self.draw.text((100, 200), f"({base_form})", font=self.font_small, fill="gray")
         
         self.draw_score()
 
-        # Refresh canvas
         updated_image = ImageTk.PhotoImage(self.image)
         self.canvas.itemconfig(self.canvas_image, image=updated_image)
         self.canvas.image = updated_image
 
     def update_canvas_prompt(self):
-        # Clear only the upper part of the canvas, not the feedback message area
         self.draw.rectangle((0, 0, self.canvas_width, 300), fill="white")
         
-        # Draw the pronoun and base form
         pronoun = self.pronouns[self.current_form - 1]
         self.draw.text((100, 100), f"{pronoun}", font=self.font_large, fill="black")
         self.draw.text((100, 200), f"({self.current_word[0]})", font=self.font_small, fill="gray")
@@ -129,46 +167,75 @@ class GrammarTrainerApp:
         if input_text == correct_answer:
             self.score += 1
             self.learned[self.current_word_idx][self.current_form] = "1"
-            self.write_csv(self.learned, eval_file)
+            self.write_csv(self.learned, self.eval_file)
             self.feedback_message("Correct!", "green")
         else:
             self.feedback_message(f"Nope! Correct: {correct_answer}", "red")
         
         if self.rounds >= self.max_rounds:
-            # If this was the last round, wait a moment to show feedback then end
             self.root.after(1000, self.end_training)
         else:
-            # If not the last round, continue to next round after showing feedback
             self.root.after(1000, self.next_round)
+
+    def next_round(self):
+        if self.rounds >= self.max_rounds:
+            self.end_training()
+            return
+
+        self.rounds += 1
+        while True:
+            self.current_word_idx = random.randint(0, len(self.data) - 1)
+            self.current_word = self.data[self.current_word_idx]
+            self.current_form = random.randint(1, 6)
+
+            if self.learned[self.current_word_idx][self.current_form] != "1":
+                break
+
+        self.update_canvas_prompt()
 
     def feedback_message(self, message, color):
         self.draw.rectangle((0, 250, self.canvas_width, self.canvas_height), fill="white")
-        # self.draw.text((100, 250), message, font=self.font_small, fill=color)
         self.draw_score()
         updated_image = ImageTk.PhotoImage(self.image)
         self.canvas.itemconfig(self.canvas_image, image=updated_image)
         self.canvas.image = updated_image
 
     def end_training(self):
-        # Clear everything from the canvas
         self.draw.rectangle((0, 0, self.canvas_width, self.canvas_height), fill="white")
         
-        # Calculate center position for text
         text = f"Training Complete! \nScore: {self.score}/{self.max_rounds}"
         text_bbox = self.draw.textbbox((0, 0), text, font=self.font_large)
         text_width = text_bbox[2] - text_bbox[0]
         x_position = (self.canvas_width - text_width) // 2
         
-        # Draw centered completion message
         self.draw.text((x_position, 100), text, font=self.font_large, fill="black")
         
-        # Update canvas
         updated_image = ImageTk.PhotoImage(self.image)
         self.canvas.itemconfig(self.canvas_image, image=updated_image)
         self.canvas.image = updated_image
         
-        # Disable input field
         self.input_field.config(state="disabled")
+        
+        self.create_restart_button()
+        self.create_menu_button()
+
+    def create_restart_button(self):
+        self.restart_button = Button(
+            self.root,
+            text="Restart",
+            font=("DejaVu Sans", 16),
+            command=self.setup_new_session
+        )
+        self.restart_button.pack(pady=10)
+
+    def create_menu_button(self):
+        self.menu_button = Button(
+            self.root,
+            text="Main Menu",
+            font=("DejaVu Sans", 16),
+            command=self.show_start_screen
+        )
+        self.menu_button.pack(pady=10)
 
     def read_csv(self, file_path):
         data = []
@@ -186,6 +253,8 @@ class GrammarTrainerApp:
     def get_pronouns(self):
         return ["я", "ты", "он", "мы", "вы", "они"]
 
+    def get_case_words(self):
+        return ["1.Sg.", "2.Sg.", "3.Sg.", "4.Sg.", "5.Sg.", "6.Sg."]
 
 if __name__ == "__main__":
     root = Tk()
