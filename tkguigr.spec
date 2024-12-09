@@ -1,12 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_all
+
+datas = [('test_dict.csv', '.'), ('eval.csv', '.'), ('decl_dict.csv', '.'), ('decl_eval.csv', '.')]
+binaries = [('DejaVuSans-Bold.ttf', '.'), ('DejaVuSans.ttf', '.')]
+hiddenimports = ['PIL._tkinter_finder']
+tmp_ret = collect_all('PIL')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 
 a = Analysis(
     ['tkguigr.py'],
     pathex=[],
-    binaries=[],
-    datas=[],
-    hiddenimports=[],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

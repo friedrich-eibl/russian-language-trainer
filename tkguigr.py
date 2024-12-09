@@ -91,7 +91,7 @@ class GrammarTrainerApp:
         self.current_form = None
         self.current_word_idx = None
         self.rounds = 0
-        self.max_rounds = 2
+        self.max_rounds = 10
         self.score = 0
         self.feedback_message_text = ""
         
@@ -258,5 +258,6 @@ class GrammarTrainerApp:
 
 if __name__ == "__main__":
     root = Tk()
+    root.title('Russian Grammar Trainer')
     app = GrammarTrainerApp(root)
     root.mainloop()
