@@ -239,7 +239,7 @@ class GrammarTrainerApp:
 
     def read_csv(self, file_path):
         data = []
-        with open(file_path, mode="r") as file:
+        with open(file_path, mode="r", encoding="utf-8") as file:
             reader = csv.reader(file)
             for row in reader:
                 data.append(row)
